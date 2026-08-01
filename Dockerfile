@@ -12,12 +12,15 @@ WORKDIR /var/www/html
 RUN apt-get update && apt-get install -y \
     git curl unzip libpq-dev libicu-dev libzip-dev \
     libpng-dev libjpeg-dev libfreetype6-dev libonig-dev \
-    supervisor nginx \
+    supervisor nginx sendmail mailutils \
  && docker-php-ext-configure gd --with-freetype --with-jpeg \
  && docker-php-ext-install pdo pdo_mysql zip bcmath intl gd opcache pcntl sockets \
  && pecl install redis \
  && docker-php-ext-enable redis \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Fix Git Dubious Ownership
+RUN git config --global --add safe.directory /var/www/html
 
 # Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
