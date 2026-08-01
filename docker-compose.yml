@@ -1,0 +1,72 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        WWWGROUP: '1000'
+    container_name: lms_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - lmsnet
+    depends_on:
+      - mysql
+      - redis
+    env_file:
+      - .env
+
+  mysql:
+    image: mysql:8.0
+    container_name: lms_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: lms_blog
+      MYSQL_ROOT_PASSWORD: root_pass_change_me
+      MYSQL_USER: lms_user
+      MYSQL_PASSWORD: lms_pass
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - lmsnet
+    command: --default-authentication-plugin=mysql_native_password
+
+  redis:
+    image: redis:7-alpine
+    container_name: lms_redis
+    restart: unless-stopped
+    networks:
+      - lmsnet
+    ports:
+      - "6379:6379"
+
+  # Worker untuk queue (kirim email, dll)
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lms_worker
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - lmsnet
+    depends_on:
+      - app
+      - redis
+    command: php artisan queue:work --tries=3 --timeout=90
+    env_file:
+      - .env
+
+networks:
+  lmsnet:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
